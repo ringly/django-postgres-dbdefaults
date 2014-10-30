@@ -26,6 +26,8 @@ For the `django.db.backends.postgresql_psycopg2` module, I have noticed that it 
 
 For example `postgresql_psycopg2` might generate SQL for a migration as such:
 
+::
+
     $ python3 manage.py sqlmigrate app 0010
     BEGIN;
     ALTER TABLE "my_table" ALTER COLUMN "some_column" SET DEFAULT false;
@@ -33,6 +35,8 @@ For example `postgresql_psycopg2` might generate SQL for a migration as such:
     COMMIT;
 
 With this change, the same migration script would just look like this:
+
+::
 
     $ python3 manage.py sqlmigrate app 0010
     BEGIN;
