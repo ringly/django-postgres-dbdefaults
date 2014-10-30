@@ -16,7 +16,7 @@ def long_description():
 
 setup(
     name='django-postgres-dbdefaults',
-    version='0.0.1',
+    version='0.0.2',
     description='Maintain database defaults in sql migrations.',
     long_description=long_description(),
     author='Peter Coles',
