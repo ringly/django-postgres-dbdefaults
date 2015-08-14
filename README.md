@@ -1,7 +1,7 @@
 django-postgres-dbdefaults
 ==========================
 
-A clone of `django.db.backends.postgresql_psycopg2` with database defaults. For use with Django 1.7.
+A clone of `django.db.backends.postgresql_psycopg2` with database defaults. For use with Django 1.7.9.
 
 Motivation
 ----------
