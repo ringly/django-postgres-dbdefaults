@@ -1,10 +1,12 @@
 django-postgres-dbdefaults
 ==========================
 
-A clone of `django.db.backends.postgresql_psycopg2` with database defaults. For use with Django 1.7.9.
 
-Motivation
-----------
+A clone of `django.db.backends.postgresql` that supports database defaults. For use with Django 1.9.x.
+
+
+Motivation - better support database migrations with rolling web server updates
+-------------------------------------------------------------------------------
 
 The Django migrations (new in Django 1.7) do not insert default values into the database. I would like database defaults to allow me to update the database with new migrations while it is still running an older version of a web app. For example, the majority of my updates follow this general pattern:
 
@@ -19,12 +21,13 @@ Some people suggest creating an additional data migration script to add the defa
 
 Furthermore, some of the [existing documentation](https://docs.djangoproject.com/en/1.7/topics/migrations/#postgresql) is vague and doesn’t make it clear that database defaults are not included in migrations.
 
+
 Solution
 --------
 
-For the `django.db.backends.postgresql_psycopg2` module, I have noticed that it actually adds the defaults in the db when it creates columns, but then it removes them in a separate SQL statement. As a result, I have made sort of a subclass of the module that makes the bare minimum changes to remove the logic where the schema editor drops these defaults (unless a change in the models actually does call for a default to be dropped).
+For the `django.db.backends.postgresql` module, I have noticed that it actually adds the defaults in the db when it creates columns, but then it removes them in a separate SQL statement. As a result, I have made a subclass of the module that overrides the one string that drops the default and replaces it with a no-op. (This is admittedly a hack, but appears to be the most minimal approach that will survive more updates than copy-pasting large sections of the original class.)
 
-For example `postgresql_psycopg2` might generate SQL for a migration as such:
+For example `postgresql` might generate SQL for a migration as such:
 
 ::
 
@@ -34,19 +37,35 @@ For example `postgresql_psycopg2` might generate SQL for a migration as such:
     ALTER TABLE "my_table" ALTER COLUMN "some_column" DROP DEFAULT;
     COMMIT;
 
-With this change, the same migration script would just look like this:
+With this change, the same migration script turns the 2nd command into a no-op:
 
 ::
 
     $ python3 manage.py sqlmigrate app 0010
     BEGIN;
     ALTER TABLE "my_table" ALTER COLUMN "some_column" SET DEFAULT false;
+    ALTER TABLE "my_table" DROP COLUMN IF EXISTS skip_django_drop_default_feature RESTRICT;
     COMMIT;
+
+Furthermore, there's no need to worry about migrations that intend to do `DROP DEFAULT`, because the django migrations code already doesn't do anything in SQL for such a change, it would actually look like this:
+
+::
+
+    $ python3 manage.py sqlmigrate app 0011
+    BEGIN;
+    --
+    -- Alter field some_column on my_table
+    --
+
+    COMMIT;
+
 
 Discussion
 ----------
 
-I would love to hear ideas that people have about this approach—it seems like it may have been contreversial in the past? In my limited use with it, it appears to solve my needs, but I haven’t seen what happens in more complex scenarios such as using a callable for a default (IMO it’s reasonable not to support that specific scenario).
+I have been using this in production on ringly.com for over a year and safely avoided running into the issues such as a new char field with `null=False` and `default=''` from causing insert errors while some app servers are on new code and others are still on the old code.
+
+I would love to hear ideas that people have about this approach—it seems like it may have been controversial in the past? In my limited use with it, it appears to solve my needs, but I haven’t seen what happens in more complex scenarios such as using a callable for a default (IMO it’s reasonable not to support that specific scenario).
 
 Some discussion on django-developers:
 
